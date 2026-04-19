@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                             String             @id @default(cuid())
+  name                           String
+  email                          String?            @unique
+  hashedPassword                 String?
+  businessName                   String
+  phone                          String             @unique
+  otpCode                        String?
+  otpExpiresAt                   DateTime?
+  telegramChatId                 String?
+  stripeCustomerId               String?
+  stripeSubscriptionId           String?
+  subscriptionStatus             SubscriptionStatus @default(FREE)
+  quotesUsedThisMonth            Int                @default(0)
+  quotesResetAt                  DateTime?
+  defaultExpirationDays          Int?
+  jobDurationMinutes             Int                @default(60)
+  bufferMinutes                  Int                @default(0)
+  autoConfirmBookings            Boolean            @default(false)
+  autoFollowUpsUsedThisMonth     Int                @default(0)
+  defaultFollowUp2Minutes        Int                @default(180)   // 3 hours
+  defaultFollowUp3Minutes        Int                @default(540)   // 9 hours
+  defaultFollowUp4Minutes        Int                @default(1440)  // 24 hours
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
+  quotes                         Quote[]
+  weeklySchedules                WeeklySchedule[]
+  blockedDates                   BlockedDate[]
+  bookings                       Booking[]
+  notifications                  Notification[]
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  customerName      String?
+  customerPhone     String
+  jobDescription    String?
+  quoteAmount       Float
+  status            QuoteStatus @default(PENDING)
+  followUpSentAt1   DateTime?   // sent immediately
+  followUpSentAt2   DateTime?   // sent at 3h
+  followUpSentAt3   DateTime?   // sent at 9h
+  followUpSentAt4   DateTime?   // sent at 24h (final)
+  n8nExecutionId    String?
+  followUpCancelled Boolean     @default(false)
+  expiresAt         DateTime?
+  formToken         String      @unique @default(cuid())
+  formSubmittedAt   DateTime?
+  durationMinutes   Int         @default(60)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  contractorId      String
+  contractor        User        @relation(fields: [contractorId], references: [id])
+  booking           Booking?
+
+  @@index([contractorId])
+  @@index([status])
+}
+
+model WeeklySchedule {
+  id            String  @id @default(cuid())
+  contractorId  String
+  dayOfWeek     Int     // 0=Sunday...6=Saturday
+  isWorking       Boolean @default(false)
+  morningStart    String? // "08:00" (HH:mm format)
+  morningEnd      String? // "12:00"
+  eveningStart    String? // "13:00"
+  eveningEnd      String? // "17:00"
+  contractor    User    @relation(fields: [contractorId], references: [id])
+
+  @@unique([contractorId, dayOfWeek])
+}
+
+model BlockedDate {
+  id            String   @id @default(cuid())
+  contractorId  String
+  date          DateTime // date only (stored as midnight UTC)
+  reason        String?
+  contractor    User     @relation(fields: [contractorId], references: [id])
+
+  @@unique([contractorId, date])
+  @@index([contractorId])
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  quoteId           String?       @unique
+  contractorId      String
+  customerName      String
+  customerPhone     String
+  additionalPhone   String?
+  jobDescription    String
+  quoteAmount       Float
+  durationMinutes   Int
+  appointmentStart  DateTime
+  appointmentEnd    DateTime
+  locationType      String        // "gps" | "manual"
+  locationAddress   String?
+  locationLat       Float?
+  locationLng       Float?
+  locationMapUrl    String?
+  notes             String?
+  status            BookingStatus @default(PENDING_CONFIRMATION)
+  rescheduleToken   String?       @unique
+  cancelToken       String?       @unique
+  tokenExpiresAt    DateTime?
+  confirmedAt       DateTime?
+  cancelledAt       DateTime?
+  declinedAt        DateTime?
+  holdExpiresAt     DateTime?
+  holdReminderSent  Boolean       @default(false)
+  isManualBooking   Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  contractor        User          @relation(fields: [contractorId], references: [id])
+  quote             Quote?        @relation(fields: [quoteId], references: [id])
+  notifications     Notification[]
+
+  @@index([contractorId])
+  @@index([status])
+  @@index([appointmentStart])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // "booking_request", "reschedule", "cancel", "auto_confirmed", "reminder_24h", "hold_expiring"
+  title      String
+  body       String
+  bookingId  String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+enum QuoteStatus {
+  PENDING
+  WON
+  LOST
+}
+
+enum BookingStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  DECLINED
+}
+
+enum SubscriptionStatus {
+  FREE
+  PLUS
+  CANCELLED
+  PAST_DUE
+}
