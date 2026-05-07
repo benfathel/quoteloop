@@ -1,5 +1,5 @@
-// New quote form page
-// TODO: Implement quote creation form
+import { redirect } from "next/navigation";
+
 export default function NewQuotePage() {
-  return <div>New Quote — coming soon</div>;
+  redirect("/dashboard/new-quote");
 }
