@@ -1,3 +1,4 @@
+<img width="3428" height="2214" alt="CleanShot 2026-05-10 at 18 12 42@2x" src="https://github.com/user-attachments/assets/77cb1b21-6da8-46d2-b416-48a094a19a70" />
 # QuoteLoop
 
 QuoteLoop is a full-stack B2B SaaS app for solo trade contractors who need a simple way to track quotes, follow up with customers, and turn accepted quotes into bookings.
